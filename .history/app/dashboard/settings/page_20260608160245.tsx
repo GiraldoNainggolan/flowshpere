@@ -18,18 +18,7 @@ const ToggleSwitch = ({ checked, onChange }: { checked: boolean, onChange: (val:
 );
 
 export default function SettingsPage() {
-  // TEKNIK LAZY INITIALIZATION: Membaca URL saat state pertama kali dibuat, tanpa perlu useEffect!
-  const [activeTab, setActiveTab] = useState(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const tab = params.get("tab");
-      if (tab && ["profile", "account", "notifications", "appearance"].includes(tab)) {
-        return tab;
-      }
-    }
-    return "profile";
-  });
-
+  const [activeTab, setActiveTab] = useState("profile");
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,6 +35,15 @@ export default function SettingsPage() {
   const [notifMentions, setNotifMentions] = useState(true);
 
   useEffect(() => {
+    // Membaca URL parameter dengan aman tanpa membuat Next.js Crash
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab && ["profile", "account", "notifications", "appearance"].includes(tab)) {
+        setActiveTab(tab);
+      }
+    }
+
     const loadDefaultUser = (currentUser: SupabaseUser | null) => {
       if (currentUser) {
         const name = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || "Developer";
@@ -157,6 +155,7 @@ export default function SettingsPage() {
         <div className="flex-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden transition-colors">
           <form onSubmit={handleSaveChanges} className="p-6 md:p-8">
             
+            {/* TAMPILAN PROFILE ASLI DENGAN UPLOAD FOTO */}
             {activeTab === "profile" && (
               <div className="animate-in fade-in duration-300">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Profile Information</h2>
