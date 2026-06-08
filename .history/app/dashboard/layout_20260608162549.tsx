@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { 
   LayoutDashboard, FolderKanban, CheckSquare, Search, 
   Bell, Menu, X, LogOut, User as UserIcon, 
-  Shield, Palette 
+  Shield, Palette
 } from "lucide-react";
 import { createClient } from "../src/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
@@ -26,44 +26,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   
   const [user, setUser] = useState<User | null>(null);
-  
   const [profileData, setProfileData] = useState({ name: "Developer", avatar: null as string | null });
   const [userEmail, setUserEmail] = useState("user@flowsphere.com");
 
   useEffect(() => {
     const syncData = (currentUser: User | null = user) => {
       const savedSettings = localStorage.getItem("flowsphere_settings");
-      
-      let fallbackName = "Developer";
-      let fallbackAvatar = null;
-      
-      if (currentUser) {
-        fallbackName = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || "Developer";
-        fallbackAvatar = currentUser.user_metadata?.avatar_url || null;
-      }
+      let fallbackName = currentUser?.user_metadata?.full_name || currentUser?.user_metadata?.name || "Developer";
+      let fallbackAvatar = currentUser?.user_metadata?.avatar_url || null;
 
       if (savedSettings) {
         const parsed = JSON.parse(savedSettings);
-        const now = new Date().getTime();
-        
-        if (now - parsed.timestamp > 86400000) {
-          localStorage.removeItem("flowsphere_settings");
-          setProfileData({ name: fallbackName, avatar: fallbackAvatar });
-        } else {
-          setProfileData({ 
-            name: parsed.name || fallbackName, 
-            avatar: parsed.avatar !== undefined ? parsed.avatar : fallbackAvatar 
-          });
-          
-          if (parsed.theme === "dark") {
-            document.documentElement.classList.add("dark");
-          } else {
-            document.documentElement.classList.remove("dark");
-          }
-        }
+        setProfileData({ name: parsed.name || fallbackName, avatar: parsed.avatar !== undefined ? parsed.avatar : fallbackAvatar });
+        if (parsed.theme === "dark") document.documentElement.classList.add("dark");
+        else document.documentElement.classList.remove("dark");
       } else {
          setProfileData({ name: fallbackName, avatar: fallbackAvatar });
       }
@@ -77,20 +55,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
 
     initData();
-
     window.addEventListener("theme_updated", () => syncData(user));
     return () => window.removeEventListener("theme_updated", () => syncData(user));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // OPTIMASI: Hard Logout (Bersihkan sesi dan paksa muat ulang halaman login)
+  // LOGIKA LOGOUT YANG SUDAH DIOPTIMALKAN (Memaksa keluar dan redirect bersih)
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    localStorage.removeItem("flowsphere_settings"); 
-    window.location.href = "/login"; 
+    localStorage.removeItem("flowsphere_settings"); // Bersihkan cache
+    window.location.href = "/login"; // Force refresh ke halaman login
   };
 
-  // OPTIMASI: Bahasa Indonesia untuk Sidebar
   const navItems = [
     { name: "Dasbor", href: "/dashboard", icon: LayoutDashboard },
     { name: "Proyek", href: "/dashboard/projects", icon: FolderKanban },
@@ -115,29 +91,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="h-8 w-8 bg-brand-500 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm">FS</div>
             <span className="font-bold text-xl tracking-tight text-text-primary dark:text-white">FlowSphere</span>
           </div>
-          <button className="md:hidden text-text-muted dark:text-gray-400" onClick={() => setIsMobileMenuOpen(false)}>
-            <X size={20} />
-          </button>
+          <button className="md:hidden text-text-muted dark:text-gray-400" onClick={() => setIsMobileMenuOpen(false)}><X size={20} /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
           <p className="px-3 text-xs font-bold text-text-muted dark:text-gray-500 uppercase tracking-wider mb-2 mt-2">Ruang Kerja</p>
           <nav className="space-y-1">
             {navItems.map((item) => {
-              // OPTIMASI: Logika spesifik agar hover button aktif satu saja dan tidak nyangkut
+              // LOGIKA SIDEBAR PINTAR: /dashboard harus match persis, sisanya boleh pakai startsWith
               const isActive = item.href === '/dashboard' 
                 ? pathname === '/dashboard' 
                 : pathname.startsWith(item.href);
 
               return (
                 <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
+                  key={item.name} href={item.href} onClick={() => setIsMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
                     isActive 
                       ? "bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 shadow-sm" 
-                      : "text-text-secondary dark:text-gray-400 hover:bg-surface-float dark:hover:bg-gray-800 hover:text-text-primary dark:hover:text-gray-100"
+                      : "text-text-secondary dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-text-primary dark:hover:text-gray-100"
                   }`}
                 >
                   <item.icon size={18} className={isActive ? "text-brand-600 dark:text-brand-400" : "text-text-muted dark:text-gray-500"} />
@@ -149,7 +121,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         <div className="p-3 border-t border-border-soft dark:border-gray-800 bg-surface dark:bg-gray-900 mt-auto">
-          <div onClick={() => setIsProfileOpen(!isProfileOpen)} className="flex items-center gap-3 px-2 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+          <div onClick={() => setIsProfileOpen(!isProfileOpen)} className="flex items-center gap-3 px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
             <UserAvatar avatarUrl={profileData.avatar} initials={initials} />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-text-primary dark:text-gray-100 truncate">{profileData.name}</p>
@@ -169,48 +141,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="hidden sm:block text-sm font-medium text-text-secondary dark:text-gray-400">
               <span className="hover:text-text-primary dark:hover:text-gray-200 cursor-pointer transition-colors">Beranda</span> 
               <span className="mx-2 text-border-strong dark:text-gray-600">/</span> 
-              <span className="text-text-primary dark:text-gray-100 capitalize">{pathname === '/dashboard' ? 'Dasbor' : pathname.split('/').pop()}</span>
+              <span className="text-text-primary dark:text-gray-100 capitalize">{pathname.split('/').pop() || 'Dasbor'}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-4 md:gap-6">
-            <div className={`hidden md:flex items-center gap-2 px-3 py-1.5 border rounded-lg transition-all ${isSearchFocused ? 'border-brand-400 ring-4 ring-brand-50 dark:ring-brand-900/20 w-64' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 w-48'}`}>
+            <div className={`hidden md:flex items-center gap-2 px-3 py-1.5 border rounded-lg transition-all border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 w-48 focus-within:ring-2 focus-within:ring-brand-500/20 focus-within:border-brand-400`}>
               <Search size={16} className="text-gray-400 dark:text-gray-500" />
-              <input 
-                type="text" placeholder="Cari proyek..." 
-                className="bg-transparent border-none focus:outline-none text-sm w-full text-gray-700 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                onFocus={() => setIsSearchFocused(true)} onBlur={() => setIsSearchFocused(false)}
-              />
-              <kbd className="hidden lg:inline-flex h-5 items-center gap-1 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-1.5 font-mono text-[10px] font-medium text-gray-400 dark:text-gray-500">⌘K</kbd>
+              <input type="text" placeholder="Cari proyek..." className="bg-transparent border-none focus:outline-none text-sm w-full text-gray-700 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500" />
             </div>
-
-            <div className="relative">
-              <button 
-                onClick={() => { setIsNotifOpen(!isNotifOpen); setIsProfileOpen(false); }}
-                className="relative p-2 text-text-secondary dark:text-gray-400 hover:text-text-primary dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
-              >
-                <Bell size={20} />
-                <span className="absolute top-1 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-900"></span>
-              </button>
-              
-              {isNotifOpen && (
-                <div className="absolute right-0 mt-3 w-80 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-xl dark:shadow-2xl rounded-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 ring-1 ring-black/5 dark:ring-white/5">
-                  <div className="flex justify-between items-center mb-3">
-                    <h4 className="font-bold text-gray-900 dark:text-white">Notifications</h4>
-                    <span className="text-xs font-medium text-brand-600 dark:text-brand-400 cursor-pointer">Mark all read</span>
-                  </div>
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 flex gap-3 cursor-pointer">
-                    <div className="w-2 h-2 mt-1.5 bg-brand-500 rounded-full shrink-0"></div>
-                    <div>
-                      <p className="text-sm text-gray-900 dark:text-gray-100 font-medium">Sprint Planning</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Alex mentioned you.</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="w-px h-6 bg-gray-200 dark:bg-gray-800 hidden sm:block"></div>
 
             <div className="relative">
               <button 
@@ -226,20 +165,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{profileData.name}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{userEmail}</p>
                   </div>
-                  
-                  <Link href="/dashboard/settings?tab=profile" onClick={() => setIsProfileOpen(false)} className="w-full text-left px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 transition-colors">
-                    <UserIcon size={16} /> Edit Profile
-                  </Link>
-                  <Link href="/dashboard/settings?tab=account" onClick={() => setIsProfileOpen(false)} className="w-full text-left px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 transition-colors">
-                    <Shield size={16} /> Account Security
-                  </Link>
-                  <Link href="/dashboard/settings?tab=appearance" onClick={() => setIsProfileOpen(false)} className="w-full text-left px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 transition-colors">
-                    <Palette size={16} /> Appearance
-                  </Link>
-                  
+                  <Link href="/dashboard/settings?tab=profile" onClick={() => setIsProfileOpen(false)} className="w-full text-left px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 transition-colors"><UserIcon size={16} /> Edit Profile</Link>
+                  <Link href="/dashboard/settings?tab=account" onClick={() => setIsProfileOpen(false)} className="w-full text-left px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 transition-colors"><Shield size={16} /> Account Security</Link>
+                  <Link href="/dashboard/settings?tab=appearance" onClick={() => setIsProfileOpen(false)} className="w-full text-left px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 transition-colors"><Palette size={16} /> Appearance</Link>
                   <div className="my-1 border-t border-gray-100 dark:border-gray-800"></div>
                   
-                  {/* OPTIMASI: Tombol Logout yang bersih dan memaksa re-login */}
+                  {/* TOMBOL LOGOUT BERFUNGSI PENUH */}
                   <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 transition-colors font-medium">
                     <LogOut size={16} /> Keluar Akun
                   </button>

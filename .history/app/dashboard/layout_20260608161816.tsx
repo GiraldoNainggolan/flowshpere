@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { 
   LayoutDashboard, FolderKanban, CheckSquare, Search, 
   Bell, Menu, X, LogOut, User as UserIcon, 
-  Shield, Palette 
+  Shield, Palette // <-- Ikon yang tadi error sudah dijamin masuk di sini
 } from "lucide-react";
 import { createClient } from "../src/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
@@ -83,18 +83,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // OPTIMASI: Hard Logout (Bersihkan sesi dan paksa muat ulang halaman login)
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    localStorage.removeItem("flowsphere_settings"); 
-    window.location.href = "/login"; 
+    router.push("/login");
   };
 
-  // OPTIMASI: Bahasa Indonesia untuk Sidebar
   const navItems = [
-    { name: "Dasbor", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Proyek", href: "/dashboard/projects", icon: FolderKanban },
-    { name: "Tugas Saya", href: "/dashboard/tasks", icon: CheckSquare },
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Projects", href: "/dashboard/projects", icon: FolderKanban },
+    { name: "My Tasks", href: "/dashboard/tasks", icon: CheckSquare },
   ];
 
   const initials = profileData.name.substring(0, 2).toUpperCase();
@@ -121,14 +118,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-          <p className="px-3 text-xs font-bold text-text-muted dark:text-gray-500 uppercase tracking-wider mb-2 mt-2">Ruang Kerja</p>
+          <p className="px-3 text-xs font-bold text-text-muted dark:text-gray-500 uppercase tracking-wider mb-2 mt-2">Workspace</p>
           <nav className="space-y-1">
             {navItems.map((item) => {
-              // OPTIMASI: Logika spesifik agar hover button aktif satu saja dan tidak nyangkut
-              const isActive = item.href === '/dashboard' 
-                ? pathname === '/dashboard' 
-                : pathname.startsWith(item.href);
-
+              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
                 <Link
                   key={item.name}
@@ -136,7 +129,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
                     isActive 
-                      ? "bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 shadow-sm" 
+                      ? "bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400" 
                       : "text-text-secondary dark:text-gray-400 hover:bg-surface-float dark:hover:bg-gray-800 hover:text-text-primary dark:hover:text-gray-100"
                   }`}
                 >
@@ -149,7 +142,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         <div className="p-3 border-t border-border-soft dark:border-gray-800 bg-surface dark:bg-gray-900 mt-auto">
-          <div onClick={() => setIsProfileOpen(!isProfileOpen)} className="flex items-center gap-3 px-2 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+          <div className="flex items-center gap-3 px-2 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
             <UserAvatar avatarUrl={profileData.avatar} initials={initials} />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-text-primary dark:text-gray-100 truncate">{profileData.name}</p>
@@ -167,9 +160,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Menu size={24} />
             </button>
             <div className="hidden sm:block text-sm font-medium text-text-secondary dark:text-gray-400">
-              <span className="hover:text-text-primary dark:hover:text-gray-200 cursor-pointer transition-colors">Beranda</span> 
+              <span className="hover:text-text-primary dark:hover:text-gray-200 cursor-pointer transition-colors">Home</span> 
               <span className="mx-2 text-border-strong dark:text-gray-600">/</span> 
-              <span className="text-text-primary dark:text-gray-100 capitalize">{pathname === '/dashboard' ? 'Dasbor' : pathname.split('/').pop()}</span>
+              <span className="text-text-primary dark:text-gray-100 capitalize">{pathname.split('/').pop() || 'Dashboard'}</span>
             </div>
           </div>
 
@@ -177,7 +170,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className={`hidden md:flex items-center gap-2 px-3 py-1.5 border rounded-lg transition-all ${isSearchFocused ? 'border-brand-400 ring-4 ring-brand-50 dark:ring-brand-900/20 w-64' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 w-48'}`}>
               <Search size={16} className="text-gray-400 dark:text-gray-500" />
               <input 
-                type="text" placeholder="Cari proyek..." 
+                type="text" placeholder="Search projects..." 
                 className="bg-transparent border-none focus:outline-none text-sm w-full text-gray-700 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 onFocus={() => setIsSearchFocused(true)} onBlur={() => setIsSearchFocused(false)}
               />
@@ -238,10 +231,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </Link>
                   
                   <div className="my-1 border-t border-gray-100 dark:border-gray-800"></div>
-                  
-                  {/* OPTIMASI: Tombol Logout yang bersih dan memaksa re-login */}
                   <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 transition-colors font-medium">
-                    <LogOut size={16} /> Keluar Akun
+                    <LogOut size={16} /> Sign out
                   </button>
                 </div>
               )}
