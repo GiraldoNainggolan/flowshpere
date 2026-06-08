@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, Suspense } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   User, Mail, Bell, Shield, Camera, 
   Check, Key, Smartphone, Laptop, Palette 
@@ -8,27 +8,21 @@ import {
 import { createClient } from "../../src/lib/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { toast } from "sonner";
-import { useSearchParams, useRouter } from "next/navigation";
 
-// Komponen Toggle Switch ditaruh di luar fungsi utama (Bebas Static Component Error)
+// Toggle Switch dengan dukungan penuh Dark Mode
 const ToggleSwitch = ({ checked, onChange }: { checked: boolean, onChange: (val: boolean) => void }) => (
   <label className="relative inline-flex items-center cursor-pointer">
     <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="sr-only peer" />
-    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 dark:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-500"></div>
+    <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 dark:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-500"></div>
   </label>
 );
 
-function SettingsContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
+export default function SettingsPage() {
+  const [activeTab, setActiveTab] = useState("profile");
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- ARSITEKTUR URL-DRIVEN: URL mendikte tab mana yang aktif (Membasmi Error SetState in Effect) ---
-  const urlTab = searchParams.get("tab");
-  const activeTab = urlTab && ["profile", "account", "notifications", "appearance"].includes(urlTab) ? urlTab : "profile";
-
-  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [localName, setLocalName] = useState("");
   const [localBio, setLocalBio] = useState("");
@@ -39,6 +33,15 @@ function SettingsContent() {
   const [accentColor, setAccentColor] = useState("blue");
   const [notifEmail, setNotifEmail] = useState(true);
   const [notifMentions, setNotifMentions] = useState(true);
+
+  // Membaca parameter URL (?tab=...) agar navigasi sinkron dengan dropdown topbar
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ["profile", "account", "notifications", "appearance"].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, []);
 
   useEffect(() => {
     const loadDefaultUser = (currentUser: SupabaseUser | null) => {
@@ -59,6 +62,7 @@ function SettingsContent() {
         const parsed = JSON.parse(savedData);
         const now = new Date().getTime();
         
+        // Auto-restart data jika lebih dari 24 jam (Aman untuk DB)
         if (now - parsed.timestamp > 86400000) {
           localStorage.removeItem("flowsphere_settings");
           loadDefaultUser(currentUser);
@@ -89,7 +93,7 @@ function SettingsContent() {
     if (file) {
       const imageUrl = URL.createObjectURL(file);
       setLocalAvatar(imageUrl);
-      toast.success("Avatar dimuat. Klik Save untuk menerapkan.");
+      toast.success("Avatar berhasil dimuat!");
     }
   };
 
@@ -111,7 +115,10 @@ function SettingsContent() {
       };
       
       localStorage.setItem("flowsphere_settings", JSON.stringify(dataToSave));
-      window.dispatchEvent(new Event("theme_updated")); // Memicu sinkronisasi layout utama
+      
+      // Mengirimkan sinyal global agar layout.tsx langsung mendeteksi perubahan tema secara real-time
+      window.dispatchEvent(new Event("theme_updated")); 
+      
       setIsSaving(false);
       toast.success("Settings updated successfully!");
     }, 1200);
@@ -125,7 +132,8 @@ function SettingsContent() {
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">
-        {/* SIDEBAR NAVIGATION */}
+        
+        {/* SIDEBAR INTERNAL SETTINGS */}
         <aside className="w-full md:w-64 shrink-0">
           <nav className="flex flex-col space-y-1">
             {[
@@ -137,8 +145,10 @@ function SettingsContent() {
               <button 
                 key={tab.id}
                 type="button"
-                // Menggunakan router Next.js dengan scroll: false agar transisi tab instan tanpa melompat
-                onClick={() => router.push(`/dashboard/settings?tab=${tab.id}`, { scroll: false })}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  window.history.pushState(null, '', `/dashboard/settings?tab=${tab.id}`);
+                }}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   activeTab === tab.id 
                     ? "bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-400 shadow-sm border border-brand-100 dark:border-brand-500/20" 
@@ -152,7 +162,7 @@ function SettingsContent() {
           </nav>
         </aside>
 
-        {/* MAIN CONTENT CARD */}
+        {/* KOTAK UTAMA FORM (Sudah Dioptimalkan ke Mode Gelap) */}
         <div className="flex-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden transition-colors duration-300">
           <form onSubmit={handleSaveChanges} className="p-6 md:p-8">
             
@@ -242,6 +252,16 @@ function SettingsContent() {
                           </div>
                         </div>
                       </div>
+                      <div className="p-4 flex items-center justify-between bg-white dark:bg-gray-900/50">
+                        <div className="flex items-center gap-3">
+                          <Smartphone size={18} className="text-gray-400 dark:text-gray-500" />
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">Smartphone - Safari</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Surabaya, ID • Last active 2 hours ago</p>
+                          </div>
+                        </div>
+                        <button type="button" className="text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400 font-medium">Revoke</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -277,14 +297,32 @@ function SettingsContent() {
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Theme Preferences</h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Customize the look and feel of your workspace.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mb-8">
-                  <div onClick={() => setTheme("light")} className={`border-2 rounded-xl p-4 cursor-pointer relative transition-all duration-300 ${theme === "light" ? "border-brand-500 bg-brand-50/40 dark:bg-brand-500/5 text-brand-700 dark:text-brand-400 shadow-xs" : "border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 hover:border-brand-300 dark:hover:border-gray-700 text-gray-600 dark:text-gray-400"}`}>
+                  
+                  {/* Opsi Light Mode */}
+                  <div 
+                    onClick={() => setTheme("light")} 
+                    className={`border-2 rounded-xl p-4 cursor-pointer relative transition-all duration-300 ${
+                      theme === "light" 
+                        ? "border-brand-500 bg-brand-50/40 dark:bg-brand-500/5 text-brand-700 dark:text-brand-400 shadow-xs" 
+                        : "border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 hover:border-gray-300 dark:hover:border-gray-700 text-gray-600 dark:text-gray-400"
+                    }`}
+                  >
                     <div className={`absolute top-3 right-3 w-4 h-4 rounded-full border-4 ${theme === "light" ? "border-brand-500 bg-white dark:bg-gray-900" : "border-gray-300 dark:border-gray-600 bg-transparent"}`}></div>
                     <div className="h-24 w-full bg-white border border-gray-200 rounded-lg mb-3 shadow-xs flex flex-col gap-2 p-2">
                       <div className="h-3 w-1/2 bg-gray-200 rounded"></div><div className="h-8 w-full bg-blue-50 rounded"></div>
                     </div>
                     <p className="text-center font-bold text-sm">Light Mode</p>
                   </div>
-                  <div onClick={() => setTheme("dark")} className={`border-2 rounded-xl p-4 cursor-pointer relative transition-all duration-300 ${theme === "dark" ? "border-brand-500 bg-gray-50 dark:bg-gray-950 text-brand-600 dark:text-brand-400 shadow-xs" : "border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900/60 hover:border-brand-300 dark:hover:border-gray-700 text-gray-600 dark:text-gray-400"}`}>
+                  
+                  {/* Opsi Dark Mode */}
+                  <div 
+                    onClick={() => setTheme("dark")} 
+                    className={`border-2 rounded-xl p-4 cursor-pointer relative transition-all duration-300 ${
+                      theme === "dark" 
+                        ? "border-brand-500 bg-gray-50 dark:bg-gray-950 text-brand-600 dark:text-brand-400 shadow-xs" 
+                        : "border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900/60 hover:border-gray-300 dark:hover:border-gray-700 text-gray-600 dark:text-gray-400"
+                    }`}
+                  >
                     <div className={`absolute top-3 right-3 w-4 h-4 rounded-full border-4 ${theme === "dark" ? "border-brand-500 bg-white dark:bg-gray-900" : "border-gray-400 dark:border-gray-600 bg-transparent"}`}></div>
                     <div className="h-24 w-full bg-gray-800 border border-gray-700 rounded-lg mb-3 shadow-xs flex flex-col gap-2 p-2">
                       <div className="h-3 w-1/2 bg-gray-600 rounded"></div><div className="h-8 w-full bg-brand-900/20 rounded"></div>
@@ -292,12 +330,25 @@ function SettingsContent() {
                     <p className="text-center font-bold text-sm">Dark Mode</p>
                   </div>
                 </div>
+
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Accent Color</h3>
+                <div className="flex gap-3">
+                  {["blue", "purple", "green", "orange"].map((color) => (
+                    <div key={color} onClick={() => setAccentColor(color)} className={`w-8 h-8 rounded-full cursor-pointer flex items-center justify-center transition-all hover:scale-110 ${
+                      color === "blue" ? "bg-blue-500" : color === "purple" ? "bg-purple-500" : color === "green" ? "bg-emerald-500" : "bg-orange-500"
+                    }`}>
+                      {accentColor === color && <Check size={16} className="text-white" />}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
+            {/* TOMBOL SAVE GLOBAL */}
             <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800 flex justify-end transition-colors duration-300">
               <button 
-                type="submit" disabled={isSaving}
+                type="submit" 
+                disabled={isSaving}
                 className="px-6 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg font-medium transition-all active:scale-[0.98] shadow-sm disabled:opacity-70 flex items-center justify-center gap-2 min-w-35"
               >
                 {isSaving ? (
@@ -312,14 +363,5 @@ function SettingsContent() {
         </div>
       </div>
     </div>
-  );
-}
-
-// BUNGKUSAN UTAMA: Menggunakan Suspense boundary agar Next.js tidak crash saat prerendering build di Vercel
-export default function SettingsPage() {
-  return (
-    <Suspense fallback={<div className="p-8 text-center text-gray-500 dark:text-gray-400">Loading settings...</div>}>
-      <SettingsContent />
-    </Suspense>
   );
 }
