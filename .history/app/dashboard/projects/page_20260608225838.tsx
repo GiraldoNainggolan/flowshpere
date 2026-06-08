@@ -17,8 +17,8 @@ export default function ProjectsPage() {
   const supabase = createClient();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  // --- STATE UNTUK MODAL UI/UX ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -29,6 +29,7 @@ export default function ProjectsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
+        setUserId(user.id);
         const { data, error } = await supabase
           .from('projects')
           .select('*')
@@ -71,6 +72,7 @@ export default function ProjectsPage() {
     ]).select(); 
 
     if (error) {
+      // 🔥 LOG ERROR AKURAT: Akan memberitahu jika kamu belum run SQL
       toast.error(`Gagal Simpan: ${error.message}`);
       console.error("Supabase Insert Error:", error);
     } else if (data) {
@@ -101,9 +103,9 @@ export default function ProjectsPage() {
   return (
     <div className="max-w-7xl mx-auto w-full animate-in fade-in duration-500 relative">
       
-      {/* --- MODAL UI/UX DENGAN Z-INDEX MAKSIMAL (z-100) --- */}
+      {/* --- MODAL UI/UX DENGAN Z-INDEX MAKSIMAL --- */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden ring-1 ring-black/5">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">Buat Proyek Baru</h3>
@@ -193,10 +195,9 @@ export default function ProjectsPage() {
               </Link>
             ))}
 
-            {/* Tombol dengan min-h-70 */}
             <button 
               onClick={() => setIsModalOpen(true)}
-              className="group flex flex-col items-center justify-center p-8 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 hover:bg-brand-50 dark:hover:bg-brand-500/5 hover:border-brand-400 dark:hover:border-brand-500 transition-all duration-300 cursor-pointer min-h-70"
+              className="group flex flex-col items-center justify-center p-8 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 hover:bg-brand-50 dark:hover:bg-brand-500/5 hover:border-brand-400 dark:hover:border-brand-500 transition-all duration-300 cursor-pointer min-h-[280px]"
             >
               <div className="w-12 h-12 mb-4 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-500 group-hover:text-brand-600 dark:group-hover:text-brand-400 group-hover:scale-110 transition-all shadow-sm">
                 <Plus size={24} />
@@ -204,9 +205,7 @@ export default function ProjectsPage() {
               <h3 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors mb-1">
                 Buat Proyek Baru
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 text-center transition-colors">
-                Siapkan papan kanban kosong.
-              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center transition-colors">Siapkan papan kanban kosong.</p>
             </button>
           </>
         )}
