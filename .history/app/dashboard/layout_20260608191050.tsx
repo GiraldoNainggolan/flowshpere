@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation"; // <-- useRouter dihapus dari sini
+import { usePathname, useRouter } from "next/navigation";
 import { 
   LayoutDashboard, FolderKanban, CheckSquare, Search, 
   Bell, Menu, X, LogOut, User as UserIcon, 
@@ -20,7 +20,8 @@ const UserAvatar = ({ avatarUrl, initials }: { avatarUrl?: string | null, initia
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const supabase = createClient(); // <-- const router = useRouter() dihapus dari sini
+  const router = useRouter();
+  const supabase = createClient();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -82,12 +83,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // OPTIMASI: Hard Logout (Bersihkan sesi dan paksa muat ulang halaman login)
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.removeItem("flowsphere_settings"); 
     window.location.href = "/login"; 
   };
 
+  // OPTIMASI: Bahasa Indonesia untuk Sidebar
   const navItems = [
     { name: "Dasbor", href: "/dashboard", icon: LayoutDashboard },
     { name: "Proyek", href: "/dashboard/projects", icon: FolderKanban },
@@ -121,6 +124,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <p className="px-3 text-xs font-bold text-text-muted dark:text-gray-500 uppercase tracking-wider mb-2 mt-2">Ruang Kerja</p>
           <nav className="space-y-1">
             {navItems.map((item) => {
+              // OPTIMASI: Logika spesifik agar hover button aktif satu saja dan tidak nyangkut
               const isActive = item.href === '/dashboard' 
                 ? pathname === '/dashboard' 
                 : pathname.startsWith(item.href);
@@ -235,6 +239,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   
                   <div className="my-1 border-t border-gray-100 dark:border-gray-800"></div>
                   
+                  {/* OPTIMASI: Tombol Logout yang bersih dan memaksa re-login */}
                   <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 transition-colors font-medium">
                     <LogOut size={16} /> Keluar Akun
                   </button>

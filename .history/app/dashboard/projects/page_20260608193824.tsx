@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { FolderKanban, Plus, ArrowRight, Loader2, Trash2 } from "lucide-react";
-import { createClient } from "../../src/lib/supabase/client"; 
+import { createClient } from "../../src/lib/supabase/client"; // <-- Path import yang tepat (Mundur 2 kali)
 import { toast } from "sonner";
 
+// INTERFACE: Memberi tahu TypeScript bentuk struktur data (Menggantikan any)
 interface Project {
   id: string;
   title: string;
@@ -16,50 +17,38 @@ interface Project {
 export default function ProjectsPage() {
   const supabase = createClient();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // State awal selalu true
   const [isCreating, setIsCreating] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
-  // LOGIKA UTAMA: Membungkam Linter dengan memindahkan fetch ke dalam useEffect
-  useEffect(() => {
-    const fetchProjectsData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        setUserId(user.id);
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          toast.error("Gagal memuat proyek.");
-          console.error(error);
-        } else if (data) {
-          setProjects(data as Project[]);
-        }
-      }
-      setIsLoading(false); 
-    };
-
-    fetchProjectsData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Fungsi pembantu khusus untuk merefresh data setelah user menambah proyek baru
-  const refreshProjectsList = async () => {
+  // Parameter isInitialLoad memastikan kita tidak memanggil setIsLoading(true) saat komponen pertama kali dimuat
+  const fetchProjects = async (isInitialLoad = false) => {
+    if (!isInitialLoad) setIsLoading(true); 
+    
     const { data: { user } } = await supabase.auth.getUser();
+    
     if (user) {
-      const { data } = await supabase
+      setUserId(user.id);
+      const { data, error } = await supabase
         .from('projects')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-        
-      if (data) setProjects(data as Project[]);
+
+      if (error) {
+        toast.error("Gagal memuat proyek.");
+        console.error(error);
+      } else if (data) {
+        setProjects(data as Project[]);
+      }
     }
+    setIsLoading(false);
   };
+
+  useEffect(() => {
+    fetchProjects(true); // Mengirim parameter 'true' agar lolos aturan linter
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCreateProject = async () => {
     if (!userId) return toast.error("Sesi tidak valid, silakan login ulang.");
@@ -81,7 +70,7 @@ export default function ProjectsPage() {
       toast.error("Gagal membuat proyek baru.");
     } else {
       toast.success("Proyek berhasil dibuat!");
-      await refreshProjectsList(); // Ambil data baru secara aman di luar useEffect
+      fetchProjects(false); // Mengambil ulang data tanpa peduli aturan initial load
     }
     setIsCreating(false);
   };
@@ -157,6 +146,7 @@ export default function ProjectsPage() {
               </Link>
             ))}
 
+            {/* Tombol Create dengan penyesuaian tailwind min-h-70 */}
             <button 
               onClick={handleCreateProject}
               disabled={isCreating}

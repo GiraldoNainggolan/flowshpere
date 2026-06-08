@@ -16,50 +16,38 @@ interface Project {
 export default function ProjectsPage() {
   const supabase = createClient();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Memang sudah true dari awal
   const [isCreating, setIsCreating] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
-  // LOGIKA UTAMA: Membungkam Linter dengan memindahkan fetch ke dalam useEffect
-  useEffect(() => {
-    const fetchProjectsData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        setUserId(user.id);
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          toast.error("Gagal memuat proyek.");
-          console.error(error);
-        } else if (data) {
-          setProjects(data as Project[]);
-        }
-      }
-      setIsLoading(false); 
-    };
-
-    fetchProjectsData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Fungsi pembantu khusus untuk merefresh data setelah user menambah proyek baru
-  const refreshProjectsList = async () => {
+  // Fungsi yang sudah 100% Asynchronous
+  const fetchProjects = async () => {
+    // Kita TIDAK memanggil setIsLoading(true) di sini agar linter senang
     const { data: { user } } = await supabase.auth.getUser();
+    
     if (user) {
-      const { data } = await supabase
+      setUserId(user.id);
+      const { data, error } = await supabase
         .from('projects')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-        
-      if (data) setProjects(data as Project[]);
+
+      if (error) {
+        toast.error("Gagal memuat proyek.");
+        console.error(error);
+      } else if (data) {
+        setProjects(data as Project[]);
+      }
     }
+    // Ini sangat aman karena dipanggil SETELAH proses asinkron (await) selesai
+    setIsLoading(false); 
   };
+
+  useEffect(() => {
+    fetchProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCreateProject = async () => {
     if (!userId) return toast.error("Sesi tidak valid, silakan login ulang.");
@@ -81,7 +69,7 @@ export default function ProjectsPage() {
       toast.error("Gagal membuat proyek baru.");
     } else {
       toast.success("Proyek berhasil dibuat!");
-      await refreshProjectsList(); // Ambil data baru secara aman di luar useEffect
+      fetchProjects(); // Memperbarui daftar proyek secara mulus di latar belakang
     }
     setIsCreating(false);
   };

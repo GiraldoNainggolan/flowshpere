@@ -3,69 +3,50 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { FolderKanban, Plus, ArrowRight, Loader2, Trash2 } from "lucide-react";
-import { createClient } from "../../src/lib/supabase/client"; 
-import { toast } from "sonner";
-
-interface Project {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-}
+import { createClient } from "../../../src/lib/supabase/client"; // Pastikan path ini benar
+import { toast } from "sonner"; // Pastikan kamu sudah menginstal sonner
 
 export default function ProjectsPage() {
   const supabase = createClient();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
-  // LOGIKA UTAMA: Membungkam Linter dengan memindahkan fetch ke dalam useEffect
-  useEffect(() => {
-    const fetchProjectsData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        setUserId(user.id);
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          toast.error("Gagal memuat proyek.");
-          console.error(error);
-        } else if (data) {
-          setProjects(data as Project[]);
-        }
-      }
-      setIsLoading(false); 
-    };
-
-    fetchProjectsData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Fungsi pembantu khusus untuk merefresh data setelah user menambah proyek baru
-  const refreshProjectsList = async () => {
+  // READ: Mengambil data proyek dari Supabase saat halaman dimuat
+  const fetchProjects = async () => {
+    setIsLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
+    
     if (user) {
-      const { data } = await supabase
+      setUserId(user.id);
+      const { data, error } = await supabase
         .from('projects')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-        
-      if (data) setProjects(data as Project[]);
+
+      if (error) {
+        toast.error("Gagal memuat proyek.");
+        console.error(error);
+      } else {
+        setProjects(data || []);
+      }
     }
+    setIsLoading(false);
   };
 
+  useEffect(() => {
+    fetchProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // CREATE: Fungsi membuat proyek baru ke Supabase
   const handleCreateProject = async () => {
     if (!userId) return toast.error("Sesi tidak valid, silakan login ulang.");
     
     const title = window.prompt("Masukkan Nama Proyek Baru:", "Proyek Baru");
-    if (!title) return;
+    if (!title) return; // Batal jika input kosong
 
     setIsCreating(true);
     const { error } = await supabase.from('projects').insert([
@@ -81,13 +62,14 @@ export default function ProjectsPage() {
       toast.error("Gagal membuat proyek baru.");
     } else {
       toast.success("Proyek berhasil dibuat!");
-      await refreshProjectsList(); // Ambil data baru secara aman di luar useEffect
+      fetchProjects(); // Muat ulang data agar proyek baru langsung muncul
     }
     setIsCreating(false);
   };
 
+  // DELETE: Menghapus proyek
   const handleDeleteProject = async (e: React.MouseEvent, projectId: string) => {
-    e.preventDefault(); 
+    e.preventDefault(); // Mencegah klik masuk ke halaman detail
     if (!window.confirm("Yakin ingin menghapus proyek ini secara permanen?")) return;
 
     const { error } = await supabase.from('projects').delete().eq('id', projectId);
@@ -95,30 +77,37 @@ export default function ProjectsPage() {
       toast.error("Gagal menghapus proyek.");
     } else {
       toast.success("Proyek dihapus.");
-      setProjects(projects.filter(p => p.id !== projectId)); 
+      setProjects(projects.filter(p => p.id !== projectId)); // Update UI instan
     }
   };
 
   return (
     <div className="max-w-7xl mx-auto w-full animate-in fade-in duration-500">
+      
+      {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl text-gray-900 dark:text-white font-bold tracking-tight mb-2 transition-colors">Semua Proyek</h1>
         <p className="text-gray-500 dark:text-gray-400 text-lg transition-colors">Kelola dan lacak inisiatif terkini tim Anda.</p>
       </div>
 
+      {/* Grid Proyek */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        {/* State Loading */}
         {isLoading ? (
           <div className="col-span-full flex justify-center py-20">
             <Loader2 className="animate-spin text-brand-500" size={40} />
           </div>
         ) : (
           <>
+            {/* Render Data dari Supabase */}
             {projects.map((project) => (
               <Link 
                 key={project.id}
                 href={`/dashboard/projects/${project.id}`} 
                 className="group flex flex-col p-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-brand-300 dark:hover:border-brand-500/50 hover:shadow-lg dark:shadow-none transition-all duration-300 cursor-pointer relative overflow-hidden"
               >
+                {/* Tombol Hapus (Muncul saat Hover) */}
                 <button 
                   onClick={(e) => handleDeleteProject(e, project.id)}
                   className="absolute top-4 right-4 p-2 bg-red-50 dark:bg-red-500/10 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 dark:hover:bg-red-500/20 transition-all z-10"
@@ -150,6 +139,7 @@ export default function ProjectsPage() {
                   <div className="flex -space-x-2">
                     <div className="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300 border-2 border-white dark:border-gray-900 flex items-center justify-center text-[10px] font-bold relative z-10 shadow-sm transition-colors">ME</div>
                   </div>
+                  
                   <div className="flex items-center gap-1 text-sm font-semibold text-brand-600 dark:text-brand-400 group-hover:translate-x-1 transition-transform">
                     Lihat Papan <ArrowRight size={16} />
                   </div>
@@ -157,10 +147,11 @@ export default function ProjectsPage() {
               </Link>
             ))}
 
+            {/* Tombol Create */}
             <button 
               onClick={handleCreateProject}
               disabled={isCreating}
-              className="group flex flex-col items-center justify-center p-8 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 hover:bg-brand-50 dark:hover:bg-brand-500/5 hover:border-brand-400 dark:hover:border-brand-500 transition-all duration-300 cursor-pointer min-h-70 disabled:opacity-50"
+              className="group flex flex-col items-center justify-center p-8 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 hover:bg-brand-50 dark:hover:bg-brand-500/5 hover:border-brand-400 dark:hover:border-brand-500 transition-all duration-300 cursor-pointer min-h-[280px] disabled:opacity-50"
             >
               <div className="w-12 h-12 mb-4 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-500 group-hover:text-brand-600 dark:group-hover:text-brand-400 group-hover:scale-110 transition-all shadow-sm">
                 {isCreating ? <Loader2 className="animate-spin" size={24} /> : <Plus size={24} />}
@@ -174,6 +165,7 @@ export default function ProjectsPage() {
             </button>
           </>
         )}
+
       </div>
     </div>
   );

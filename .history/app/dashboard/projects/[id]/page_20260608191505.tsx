@@ -13,6 +13,7 @@ export default function ProjectBoardPage({ params }: { params: Promise<{ id: str
   const [projectTitle, setProjectTitle] = useState("Memuat Proyek...");
   const [isLoading, setIsLoading] = useState(true);
 
+  // READ: Mengambil judul proyek spesifik dari Supabase
   useEffect(() => {
     const fetchProjectDetails = async () => {
       const { data, error } = await supabase
@@ -20,11 +21,6 @@ export default function ProjectBoardPage({ params }: { params: Promise<{ id: str
         .select('title')
         .eq('id', boardId)
         .single();
-
-      // OPTIMASI: Memanfaatkan variabel error agar lulus linter
-      if (error) {
-        console.error("Kesalahan saat memuat judul proyek:", error);
-      }
 
       if (data) setProjectTitle(data.title);
       else setProjectTitle("Proyek Tidak Ditemukan");
@@ -37,6 +33,7 @@ export default function ProjectBoardPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="h-full flex flex-col -mx-2 md:mx-0 animate-in fade-in duration-300">
+      {/* Board Header dengan dukungan Dark Mode Penuh */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 px-2 md:px-0">
         <div>
           <h1 className="text-3xl text-gray-900 dark:text-white font-bold tracking-tight transition-colors flex items-center gap-3">
@@ -49,7 +46,9 @@ export default function ProjectBoardPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
         
+        {/* Board Actions */}
         <div className="flex items-center gap-3">
+          {/* Active Users Avatar */}
           <div className="hidden sm:flex -space-x-2 mr-2 overflow-hidden px-1">
              <div className="inline-flex h-8 w-8 items-center justify-center rounded-full ring-2 ring-white dark:ring-gray-900 bg-brand-100 dark:bg-brand-900/50 text-[10px] font-bold text-brand-700 dark:text-brand-400 z-20 transition-colors">AC</div>
              <div className="inline-flex h-8 w-8 items-center justify-center rounded-full ring-2 ring-white dark:ring-gray-900 bg-amber-100 dark:bg-amber-900/50 text-[10px] font-bold text-amber-700 dark:text-amber-400 z-10 transition-colors">JD</div>
@@ -67,6 +66,7 @@ export default function ProjectBoardPage({ params }: { params: Promise<{ id: str
         </div>
       </div>
 
+      {/* Board Area */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden pb-4">
         <KanbanBoard boardId={boardId} />
       </div>
