@@ -5,12 +5,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { 
   LayoutDashboard, FolderKanban, CheckSquare, Search, 
-  Bell, Menu, X, LogOut, Settings, User as UserIcon, 
-  Shield, Palette // <-- Ikon yang tadi error sudah dijamin masuk di sini
+  Bell, Menu, X, LogOut, Settings, User as UserIcon 
 } from "lucide-react";
 import { createClient } from "../src/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
+// Komponen ditaruh di LUAR fungsi utama agar performa maksimal
 const UserAvatar = ({ avatarUrl, initials }: { avatarUrl?: string | null, initials: string }) => (
   <div className="h-9 w-9 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-sm overflow-hidden shrink-0 ring-2 ring-white dark:ring-gray-800">
     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -30,10 +30,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   const [user, setUser] = useState<User | null>(null);
   
+  // STATE SINKRONISASI GLOBAL UNTUK PROFILE
   const [profileData, setProfileData] = useState({ name: "Developer", avatar: null as string | null });
   const [userEmail, setUserEmail] = useState("user@flowsphere.com");
 
   useEffect(() => {
+    // 1. Fungsi penarik data dari LocalStorage
     const syncData = (currentUser: User | null = user) => {
       const savedSettings = localStorage.getItem("flowsphere_settings");
       
@@ -49,15 +51,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const parsed = JSON.parse(savedSettings);
         const now = new Date().getTime();
         
+        // Hapus jika lebih dari 24 Jam
         if (now - parsed.timestamp > 86400000) {
           localStorage.removeItem("flowsphere_settings");
           setProfileData({ name: fallbackName, avatar: fallbackAvatar });
         } else {
+          // Sinkronisasi Nama dan Avatar ke seluruh Layout
           setProfileData({ 
             name: parsed.name || fallbackName, 
             avatar: parsed.avatar !== undefined ? parsed.avatar : fallbackAvatar 
           });
           
+          // Terapkan Theme
           if (parsed.theme === "dark") {
             document.documentElement.classList.add("dark");
           } else {
@@ -69,15 +74,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
     };
 
+    // 2. Inisialisasi awal
     const initData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       if(user && user.email) setUserEmail(user.email);
-      syncData(user); 
+      syncData(user); // Panggil setelah user didapat
     };
 
     initData();
 
+    // 3. Listener yang mendengarkan saat tombol Save di halaman Settings ditekan
     window.addEventListener("theme_updated", () => syncData(user));
     return () => window.removeEventListener("theme_updated", () => syncData(user));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -100,9 +107,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="flex h-screen bg-surface dark:bg-gray-900 overflow-hidden text-text-primary dark:text-gray-100 font-sans transition-colors duration-300">
       
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}></div>
+        <div className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
       )}
       
+      {/* SIDEBAR: Diubah strukturnya agar flex-col-nya padat dan menu bawah menempel */}
       <aside className={`
         fixed md:static inset-y-0 left-0 z-50 w-64 bg-surface dark:bg-gray-900 border-r border-border-soft dark:border-gray-800 flex flex-col transition-transform duration-300 ease-in-out
         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
@@ -112,6 +120,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="h-8 w-8 bg-brand-500 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm">FS</div>
             <span className="font-bold text-xl tracking-tight text-text-primary dark:text-white">FlowSphere</span>
           </div>
+          {/* Tombol Hamburger Tutup Menu Mobile */}
           <button className="md:hidden text-text-muted dark:text-gray-400" onClick={() => setIsMobileMenuOpen(false)}>
             <X size={20} />
           </button>
@@ -141,6 +150,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </nav>
         </div>
 
+        {/* Profil Bawah: Menggunakan mt-auto agar selalu berada di bawah, dan padding lebih compact */}
         <div className="p-3 border-t border-border-soft dark:border-gray-800 bg-surface dark:bg-gray-900 mt-auto">
           <div className="flex items-center gap-3 px-2 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
             <UserAvatar avatarUrl={profileData.avatar} initials={initials} />
@@ -152,10 +162,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
+      {/* KONTEN UTAMA */}
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-slate-50 dark:bg-gray-950 transition-colors duration-300">
         <header className="h-16 flex items-center justify-between px-4 md:px-8 border-b border-border-soft dark:border-gray-800 bg-white dark:bg-gray-900 z-30 shrink-0 shadow-sm dark:shadow-none transition-colors duration-300">
           
           <div className="flex items-center gap-4 flex-1">
+            {/* Tombol Hamburger Buka Menu Mobile */}
             <button className="md:hidden text-text-secondary dark:text-gray-400 hover:text-text-primary dark:hover:text-white" onClick={() => setIsMobileMenuOpen(true)}>
               <Menu size={24} />
             </button>
@@ -177,6 +189,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <kbd className="hidden lg:inline-flex h-5 items-center gap-1 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-1.5 font-mono text-[10px] font-medium text-gray-400 dark:text-gray-500">⌘K</kbd>
             </div>
 
+            {/* Dropdown Notifikasi */}
             <div className="relative">
               <button 
                 onClick={() => { setIsNotifOpen(!isNotifOpen); setIsProfileOpen(false); }}
@@ -205,6 +218,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             <div className="w-px h-6 bg-gray-200 dark:bg-gray-800 hidden sm:block"></div>
 
+            {/* Dropdown Profil Topbar */}
             <div className="relative">
               <button 
                 onClick={() => { setIsProfileOpen(!isProfileOpen); setIsNotifOpen(false); }}
@@ -213,13 +227,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <UserAvatar avatarUrl={profileData.avatar} initials={initials} />
               </button>
 
-              {isProfileOpen && (
-                <div className="absolute right-0 mt-3 w-56 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-xl dark:shadow-2xl rounded-2xl py-2 z-50 animate-in fade-in slide-in-from-top-2 ring-1 ring-black/5 dark:ring-white/5">
+              {/* ... (kode nama dan email) ... */}
                   <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 mb-1">
                     <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{profileData.name}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{userEmail}</p>
                   </div>
                   
+                  {/* MENU DROPDOWN BARU YANG LENGKAP */}
                   <Link href="/dashboard/settings?tab=profile" onClick={() => setIsProfileOpen(false)} className="w-full text-left px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 transition-colors">
                     <UserIcon size={16} /> Edit Profile
                   </Link>
@@ -234,9 +248,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 transition-colors font-medium">
                     <LogOut size={16} /> Sign out
                   </button>
-                </div>
-              )}
-            </div>
 
           </div>
         </header>
