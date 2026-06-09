@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -8,7 +10,7 @@ import {
   Bell, Menu, X, LogOut, User as UserIcon, 
   Shield, Palette 
 } from "lucide-react";
-import { createClient } from "../../src/lib/supabase/client";
+import { createClient } from "../src/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
 const UserAvatar = ({ avatarUrl, initials }: { avatarUrl?: string | null, initials: string }) => (
@@ -82,13 +84,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // 🔥 LOGOUT INSTAN (Fire and Forget)
+  // 🔥 OPTIMASI SUPER INSTAN: Fire and Forget Logout
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
-    setIsProfileOpen(false); // Tutup popup seketika
-    localStorage.removeItem("flowsphere_settings"); // Hapus memori lokal
-    supabase.auth.signOut(); // Logout Supabase di belakang layar
-    window.location.replace("/login"); // Lempar ke login dalam 0.01 detik
+    setIsProfileOpen(false); // 1. Tutup popup seketika
+    localStorage.removeItem("flowsphere_settings"); // 2. Hapus memori lokal
+    supabase.auth.signOut(); // 3. Proses logout berjalan tanpa perlu ditunggu (tidak bikin lag)
+    window.location.replace("/login"); // 4. Tendang ke halaman login SEKARANG JUGA!
   };
 
   const navItems = [
